@@ -8,8 +8,14 @@ import (
 
 var errRequestFail = errors.New("Request fail")
 
+type result struct {
+	url    string
+	status string
+}
+
 func main() {
-	var results = make(map[string]string)
+	// results := make(map[string]string)
+	c := make(chan result)
 	urls := []string{
 		"https://www.airbnb.com/",
 		"https://www.google.com/",
@@ -21,25 +27,22 @@ func main() {
 	}
 
 	for _, url := range urls {
-		result := "OK"
-		erro := hitURL(url)
-		if erro != nil {
-			result = "FAILED"
-		}
-		results[url] = result
+		go hitURL(url, c)
 	}
-	for url, result := range results {
-		fmt.Println(url, result)
+
+	for i, _ := range urls {
+		fmt.Println("Received number : ", i, " result: ", <-c)
 	}
 }
 
-func hitURL(url string) error {
-	fmt.Println("Checking: ", url)
-	res, err := http.Get(url)
-	if err != nil || res.StatusCode >= 400 {
-		fmt.Println(err, res.StatusCode)
-		return errRequestFail
+// if the parameter is looks like chan<-, it can only send
+// and the parameter looks like chan->, it can only receive
+func hitURL(url string, c chan<- result) {
+	fmt.Println("Checking : ", url)
+	resp, err := http.Get(url)
+	if err != nil || resp.StatusCode >= 400 {
+		c <- result{url: url, status: "FAILED"}
+	} else {
+		c <- result{url: url, status: "SUCCESS"}
 	}
-
-	return nil
 }
