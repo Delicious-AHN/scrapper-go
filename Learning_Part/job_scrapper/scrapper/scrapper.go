@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
+	"github.com/PuerkitoBsio/goquery"
 )
 
 type extractedjob struct {
@@ -21,14 +21,14 @@ type extractedjob struct {
 }
 
 func Scrape(term string) {
-	var baseURL string = "https://kr.indeed.com/jobs?q=" + term + "&limit=50"
+	baseURL string := "https://kr.indeed.com/jobs?q=" + term + "&limit=50"
 	var jobs []extractedjob
 	c := make(chan []extractedjob)
 	cWrite := make(chan error)
 	// totalpages := getPages()
 
 	for i := 0; i < 9; i++ {
-		go getPage(i, c)
+		go getPage(i, baseURL, c)
 	}
 
 	for i := 0; i < 9; i++ {
@@ -46,10 +46,10 @@ func Scrape(term string) {
 	fmt.Println("Done, Extracted", len(jobs))
 }
 
-func getPage(page int, mainC chan<- []extractedjob) {
+func getPage(page int, url string, mainC chan<- []extractedjob) {
 	var jobs []extractedjob
 	c := make(chan extractedjob)
-	pageURL := baseURL + "&start=" + strconv.Itoa(page*50)
+	pageURL := url + "&start=" + strconv.Itoa(page*50)
 	fmt.Println("Requesting : ", pageURL)
 	res, err := http.Get(pageURL)
 	checkErr(err)
@@ -72,9 +72,9 @@ func getPage(page int, mainC chan<- []extractedjob) {
 	mainC <- jobs
 }
 
-func getPages() int {
+func getPages(url string) int {
 	pages := 0
-	res, err := http.Get(baseURL)
+	res, err := http.Get(url)
 	checkErr(err)
 	checkCode(res)
 
