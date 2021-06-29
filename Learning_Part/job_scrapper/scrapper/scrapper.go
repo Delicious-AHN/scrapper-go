@@ -26,7 +26,6 @@ func Scrape(term string) {
 	baseURL := "https://kr.indeed.com/jobs?q=" + term + "&limit=50"
 	var jobs []extractedjob
 	c := make(chan []extractedjob)
-	cWrite := make(chan error)
 	// totalpages := getPages()
 
 	for i := 0; i < 9; i++ {
@@ -38,11 +37,8 @@ func Scrape(term string) {
 		jobs = append(jobs, extractedjobs...)
 	}
 
-	go writeJobs(jobs, cWrite)
-
-	for i := 0; i < len(jobs); i++ {
-		<-cWrite
-	}
+	wErr := writeJobs(jobs)
+	checkErr(wErr)
 
 	fmt.Println("Done, Extracted", len(jobs))
 
@@ -124,7 +120,7 @@ func CleanString(str string) string {
 	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")
 }
 
-func writeJobs(jobs []extractedjob, c chan<- error) {
+func writeJobs(jobs []extractedjob) error {
 
 	file, err := os.Create("jobs.csv")
 	checkErr(err)
@@ -136,10 +132,18 @@ func writeJobs(jobs []extractedjob, c chan<- error) {
 
 	wErr := w.Write(headers)
 	checkErr(wErr)
+	c := make(chan error)
+	go csvWrite(jobs, w, c)
 
+	for i := 0; i < len(jobs); i++ {
+		<-c
+	}
+	return wErr
+}
+
+func csvWrite(jobs []extractedjob, w *csv.Writer, c chan<- error) {
 	for _, job := range jobs {
 		jobSlice := []string{"https://kr.indeed.com/viewjob?jk=" + job.id, job.title, job.location, job.salary, job.summary}
 		c <- w.Write(jobSlice)
 	}
-
 }
