@@ -8,8 +8,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/PuerkitoBsio/goquery"
+	"github.com/PuerkitoBio/goquery"
 )
 
 type extractedjob struct {
@@ -21,7 +22,8 @@ type extractedjob struct {
 }
 
 func Scrape(term string) {
-	baseURL string := "https://kr.indeed.com/jobs?q=" + term + "&limit=50"
+	now := time.Now()
+	baseURL := "https://kr.indeed.com/jobs?q=" + term + "&limit=50"
 	var jobs []extractedjob
 	c := make(chan []extractedjob)
 	cWrite := make(chan error)
@@ -39,11 +41,14 @@ func Scrape(term string) {
 	go writeJobs(jobs, cWrite)
 
 	for i := 0; i < len(jobs); i++ {
-		wErr := <-cWrite
-		checkErr(wErr)
+		<-cWrite
 	}
 
 	fmt.Println("Done, Extracted", len(jobs))
+
+	done := time.Now()
+
+	fmt.Println(now.Sub(done))
 }
 
 func getPage(page int, url string, mainC chan<- []extractedjob) {
@@ -91,10 +96,10 @@ func getPages(url string) int {
 
 func extractJob(card *goquery.Selection, c chan<- extractedjob) {
 	id, _ := card.Attr("data-jk")
-	title := cleanString(card.Find(".title>a").Text())
-	location := cleanString(card.Find(".companyLocation").Text())
-	salary := cleanString(card.Find(".salary-snippet").Text())
-	summary := cleanString(card.Find(".summary").Text())
+	title := CleanString(card.Find(".title>a").Text())
+	location := CleanString(card.Find(".companyLocation").Text())
+	salary := CleanString(card.Find(".salary-snippet").Text())
+	summary := CleanString(card.Find(".summary").Text())
 	c <- extractedjob{
 		id:       id,
 		title:    title,
@@ -115,7 +120,7 @@ func checkCode(res *http.Response) {
 	}
 }
 
-func cleanString(str string) string {
+func CleanString(str string) string {
 	return strings.Join(strings.Fields(strings.TrimSpace(str)), " ")
 }
 
